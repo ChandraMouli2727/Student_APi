@@ -1,0 +1,4 @@
+[{"id":1,"name":"Chandra","email":"chandra@example.com","marks":[99,80,85]},
+{"id":2,"name":"Mouli","email":"mouli@example.com","marks":[29,40,85]},
+{"id":3,"name":"Arjun","email":"arjun@example.com","marks":[39,80,95]}
+]
