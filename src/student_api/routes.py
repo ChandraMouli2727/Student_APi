@@ -1,48 +1,25 @@
-from fastapi import FastAPI,HTTPException,status,Path,Query
+from fastapi import FastAPI,HTTPException,status,Path,APIRouter
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel,EmailStr,AnyUrl,Field,ValidationError
-from typing import List,Dict,Optional,Annotated
-import json
+from student_api.database import save_data,load_data
+from student_api.models import Student,Response_Student
+from typing import List
 
-Mark = Annotated[int, Field(ge=1, le=100)]
-class Student(BaseModel):
-    name:Annotated[str,Field(...,max_length=50,description='Name should be within 50 characters',examples=['Chandra'])]
-    email:EmailStr
-    marks:Annotated[List[Mark],Field(...,min_length=1,description='Atleast 1 subject marks required')]
-
-class PutStudent(BaseModel):
-    name:Optional[Annotated[str,Field(max_length=50)]]
-    email:Optional[EmailStr]
-    marks:Annotated[List[Mark],Field(min_length=1)]
-
-
-def load_data():
-    with open('students.json','r') as f:
-        students = json.load(f)
-
-    return students
-
-def save_data(data):
-    with open('students.json','w') as f:
-        json.dump(data,f)
-
-app = FastAPI()
-
-@app.get("/")
+router = APIRouter()
+@router.get("/")
 def home():
     return {"message":"Student Management System"}
 
-@app.get('/about')
+@router.get('/about')
 def about():
     return {"message ":"A fully functional API to manage your Student record"}
 
 
-@app.get('/students')
+@router.get('/students',response_model=List[Response_Student])
 def students_details():
     data = load_data()
     return data
 
-@app.get('/student/{id}')
+@router.get('/student/{id}',response_model=Response_Student)
 def get_student(id:int=Path(...,description='ID of the Student in the DB',examples='1')):
     data = load_data()
     student = next(
@@ -52,7 +29,7 @@ def get_student(id:int=Path(...,description='ID of the Student in the DB',exampl
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='Student Id not found' )
     return student
 
-@app.post('/students')
+@router.post('/students',response_model=Response_Student)
 def create_student(student:Student):
     data = load_data()
     next_id = max((std['id'] for std in data), default=0) + 1
@@ -63,12 +40,12 @@ def create_student(student:Student):
         'email': student.email,
         'marks': student.marks
     }
-    data.append(new_student)
+    data.routerend(new_student)
     print(data)
     save_data(data)
     return JSONResponse(status_code=status.HTTP_201_CREATED,content=new_student)
 
-@app.put('/students/{req_id}')
+@router.put('/students/{req_id}',response_model=Response_Student)
 def put_student(req_id:int,putstudent:Student):
     data = load_data()
     student = next(
@@ -85,7 +62,7 @@ def put_student(req_id:int,putstudent:Student):
     print(student)
     return JSONResponse(status_code=status.HTTP_200_OK,content=student)
 
-@app.delete('/students/{req_id}')
+@router.delete('/students/{req_id}')
 def del_student(req_id:int):
     data = load_data()
     student = next(
@@ -98,4 +75,3 @@ def del_student(req_id:int):
     data.remove(student)
     save_data(data)
     return JSONResponse(status_code=status.HTTP_200_OK,content=student)
-
