@@ -1,6 +1,4 @@
-from student_api.database import save_data,load_data
-from student_api.models import Student,Response_Student
-from typing import List,Dict
+from student_api.database import save_data
 
 def create_student(student,data):
     next_id = max((std['id'] for std in data), default=0) + 1
