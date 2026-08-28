@@ -10,6 +10,12 @@ class Student(BaseModel):
     email:EmailStr
     marks:Annotated[List[Mark],Field(...,min_length=1,description='Atleast 1 subject marks required')]
 
+class PutStudent(BaseModel):
+    name:Optional[Annotated[str,Field(max_length=50)]]
+    email:Optional[EmailStr]
+    marks:Annotated[List[Mark],Field(min_length=1)]
+
+
 def load_data():
     with open('students.json','r') as f:
         students = json.load(f)
@@ -61,4 +67,35 @@ def create_student(student:Student):
     print(data)
     save_data(data)
     return JSONResponse(status_code=status.HTTP_201_CREATED,content=new_student)
+
+@app.put('/students/{req_id}')
+def put_student(req_id:int,putstudent:Student):
+    data = load_data()
+    student = next(
+            (std for std in data if std['id'] == req_id),
+            None)
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='Student Id not found' )
+
+    update_data = putstudent.model_dump()
+
+    student.update(update_data)
+
+    save_data(data)
+    print(student)
+    return JSONResponse(status_code=status.HTTP_200_OK,content=student)
+
+@app.delete('/students/{req_id}')
+def del_student(req_id:int):
+    data = load_data()
+    student = next(
+            (std for std in data if std['id'] == req_id),
+            None)
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='Student Id not found' )
+
+    print(student)
+    data.remove(student)
+    save_data(data)
+    return JSONResponse(status_code=status.HTTP_200_OK,content=student)
 
