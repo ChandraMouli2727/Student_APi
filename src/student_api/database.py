@@ -1,11 +1,19 @@
 import json
+from json import JSONDecodeError
+
 
 def load_data():
-    with open('students.json','r') as f:
-        students = json.load(f)
+    try:
+        with open('students.json', 'r') as f:
+            return json.load(f)
 
-    return students
+    except FileNotFoundError:
+        return []
+
+    except JSONDecodeError:
+        raise ValueError("The student data file contains invalid JSON.")
+
 
 def save_data(data):
-    with open('students.json','w') as f:
-        json.dump(data,f)
+    with open('students.json', 'w') as f:
+        json.dump(data, f, indent=4)

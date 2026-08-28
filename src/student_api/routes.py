@@ -1,10 +1,22 @@
-from fastapi import FastAPI,HTTPException,status,Path,APIRouter
+from fastapi import HTTPException,status,Path,APIRouter,Depends,Header,Request
 from fastapi.responses import JSONResponse
-from student_api.database import save_data,load_data
+from student_api.database import load_data
 from student_api.models import Student,Response_Student
 from typing import List
+from student_api.services import create_student,get_all_students,get_student_by_id,update_student,del_student
+
 
 router = APIRouter()
+def get_students_data()->List[dict]:
+   return load_data()
+
+def get_current_user(User:str=Header(alias="User"))->str:
+    if User.upper() != 'CHANDRA':
+           raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail='Invalid User')
+    return User
+
+protected_router = APIRouter(dependencies=[Depends(get_current_user)])
+
 @router.get("/")
 def home():
     return {"message":"Student Management System"}
@@ -15,63 +27,34 @@ def about():
 
 
 @router.get('/students',response_model=List[Response_Student])
-def students_details():
-    data = load_data()
-    return data
+def students_details(data:list[dict]=Depends(get_students_data)):
+    return get_all_students(data)
 
-@router.get('/student/{id}',response_model=Response_Student)
-def get_student(id:int=Path(...,description='ID of the Student in the DB',examples='1')):
-    data = load_data()
-    student = next(
-            (std for std in data if std['id'] == id),
-            None)
-    if not student:
+@router.get('/student/{s_id}',response_model=Response_Student)
+def get_student(s_id:int=Path(...,description='ID of the Student in the DB',examples='1'),data=Depends(get_students_data)):
+    response = get_student_by_id(data,s_id)
+    if response is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='Student Id not found' )
-    return student
+    return response
 
-@router.post('/students',response_model=Response_Student)
-def create_student(student:Student):
-    data = load_data()
-    next_id = max((std['id'] for std in data), default=0) + 1
 
-    new_student = {
-        'id': next_id,
-        'name': student.name,
-        'email': student.email,
-        'marks': student.marks
-    }
-    data.routerend(new_student)
-    print(data)
-    save_data(data)
-    return JSONResponse(status_code=status.HTTP_201_CREATED,content=new_student)
+@protected_router.post('/students',response_model=Response_Student)
+# def create_student(student:Student,data:List[dict]=Depends(get_students_data),user=Depends(get_current_user)):
+def post_student(student:Student,data:List[dict]=Depends(get_students_data)):
+    response = create_student(student,data)
+    return JSONResponse(status_code=status.HTTP_201_CREATED,content=response)
 
-@router.put('/students/{req_id}',response_model=Response_Student)
-def put_student(req_id:int,putstudent:Student):
-    data = load_data()
-    student = next(
-            (std for std in data if std['id'] == req_id),
-            None)
-    if not student:
+@protected_router.put('/students/{req_id}',response_model=Response_Student)
+def put_student(req_id:int,putstudent:Student,data:List[dict] = Depends(get_students_data)):
+    response = update_student(req_id,data,putstudent)
+    if response is None: 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='Student Id not found' )
+    
+    return JSONResponse(status_code=status.HTTP_200_OK,content=response)
 
-    update_data = putstudent.model_dump()
-
-    student.update(update_data)
-
-    save_data(data)
-    print(student)
-    return JSONResponse(status_code=status.HTTP_200_OK,content=student)
-
-@router.delete('/students/{req_id}')
-def del_student(req_id:int):
-    data = load_data()
-    student = next(
-            (std for std in data if std['id'] == req_id),
-            None)
-    if not student:
+@protected_router.delete('/students/{req_id}')
+def delete_student(req_id:int,data:List[dict] =Depends(get_students_data)):
+    response = del_student(req_id,data)
+    if not response:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail='Student Id not found' )
-
-    print(student)
-    data.remove(student)
-    save_data(data)
-    return JSONResponse(status_code=status.HTTP_200_OK,content=student)
+    return JSONResponse(status_code=status.HTTP_200_OK,content=response)
